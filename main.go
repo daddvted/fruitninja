@@ -26,7 +26,6 @@ func createLogger(dev bool, level string) *zap.Logger {
 	if dev {
 		encoding = "console"
 		callerDisabled = false
-		callerDisabled = false
 	}
 	// Set log level to INFO by default
 	lvl := zap.NewAtomicLevelAt(zap.InfoLevel)

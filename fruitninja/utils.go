@@ -9,30 +9,11 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	petname "github.com/dustinkirkland/golang-petname"
 	"go.uber.org/zap"
 )
-
-var fruitMap = map[string]string{
-	"apple":      "🍎",
-	"banana":     "🍌",
-	"cherry":     "🍒",
-	"coconut":    "🥥",
-	"grape":      "🍇",
-	"kiwi":       "🥝",
-	"lemon":      "🍋",
-	"mango":      "🥭",
-	"orange":     "🍊",
-	"peach":      "🍑",
-	"pear":       "🍐",
-	"pineapple":  "🍍",
-	"strawberry": "🍓",
-	"tomato":     "🍅",
-	"watermelon": "🍉",
-	"blade":      "🔪",
-	"default":    "🐞",
-}
 
 func getMatchedService(name string, services *[]string) (string, bool) {
 	for _, service := range *services {
@@ -90,7 +71,27 @@ func generatePetName(upper bool) string {
 	return name
 }
 
-func produceFruit(fruitMap map[string]string, isRandom bool) (fruit string) {
+func serveFruit(isRandom bool, fruitName string) (fruit string) {
+	// if fruitName is "", return current settings name
+	fruitMap := map[string]string{
+		"apple":      "🍎",
+		"banana":     "🍌",
+		"cherry":     "🍒",
+		"coconut":    "🥥",
+		"grape":      "🍇",
+		"kiwi":       "🥝",
+		"lemon":      "🍋",
+		"mango":      "🥭",
+		"orange":     "🍊",
+		"peach":      "🍑",
+		"pear":       "🍐",
+		"pineapple":  "🍍",
+		"strawberry": "🍓",
+		"tomato":     "🍅",
+		"watermelon": "🍉",
+		"blade":      "🔪",
+		"default":    "🐞",
+	}
 	// var isRandom bool
 	// if len(randomFruit) > 0 {
 	// 	isRandom = randomFruit[0]
@@ -108,8 +109,13 @@ func produceFruit(fruitMap map[string]string, isRandom bool) (fruit string) {
 		fruit = fruits[rnd.Intn(len(fruits))]
 
 	} else {
-		name := fruitMap[fruitNinjaSettings.Name]
-		fruit = strings.Repeat(name, fruitNinjaSettings.Count)
+		var fruitEmoji string
+		if fruitName == "" {
+			fruitEmoji = fruitMap[fruitNinjaSettings.Name]
+		} else {
+			fruitEmoji = fruitMap[fruitName]
+		}
+		fruit = strings.Repeat(fruitEmoji, fruitNinjaSettings.Count)
 	}
 	return
 }
@@ -133,4 +139,13 @@ func getOutboundIP() (ip string) {
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	ip = localAddr.IP.String()
 	return
+}
+
+func isNumeric(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

@@ -7,17 +7,32 @@
 </head>
 
 <body>
-  <p id="message"></p>
-  <p id="summary"></p>
+  <p>
+    <button onclick="simpleTest()">simple test</button>
+  </p>
+  <p>
+    <button onclick="counterTest()">counter test</button>
+    <input id="num" type="number" min="0" value="10"></input>
+  </p>
+  <p>
+    <button onclick="cleanup()">clean</button>
+    <button onclick="stopTest()">stop</button>
+  </p>
+  <!-- Result -->
+  <p id="client"></p>
+  <p id="server"></p>
+  <p id="stats"></p>
 
   <script>
     const fruits = [
       "apple", "banana", "cherry", "coconut", "grape", "kiwi",
-	    "lemon", "mango", "orange", "peach", "pear", "pineapple",
-	    "strawberry", "tomato", "watermelon", "blade"
+      "lemon", "mango", "orange", "peach", "pear", "pineapple",
+      "strawberry", "tomato", "watermelon", "blade"
     ]
 
-    var dict = {}
+    let dict = {};
+    let ws = null;
+    let intervalId = null;
 
     function randomChoice(list) {
       const randomIndex = Math.floor(Math.random() * list.length)
@@ -25,67 +40,106 @@
     }
 
     function updateDict(key) {
-      if (key.toLowerCase().startsWith('welcome')) {
-        return;
-      }
-      if (dict[key]) {
-        dict[key] += 1;
-      } else {
-        dict[key] = 1;
-      }
+      if (key.toLowerCase().startsWith('welcome')) return;
+      dict[key] = (dict[key] || 0) + 1;
+    }
+
+    function updateStats() {
+      const stats = document.getElementById('stats')
+      const statsText = "统计：<br/>" +
+        Object.entries(dict)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('<br/>');
+      stats.innerHTML = statsText;
     }
 
     function connectWebSocket() {
-      var loc = window.location;
-      var scheme = 'ws';
-      var isClosed = false;
+      const loc = window.location;
+      const scheme = loc.protocol === 'https:' ? 'wss' : 'ws';
+      const uri = `${scheme}://${loc.host}/ws`;
 
-      if (loc.protocol === 'https:') {
-        scheme = 'wss';
-      }
+      ws = new WebSocket(uri);
 
-      // const uri = `${scheme}://${loc.host}${loc.pathname}ws`
-      const uri = `${scheme}://${loc.host}/ws`
-      ws = new WebSocket(uri)
+      ws.onopen = function () {
+        console.log('Connected');
+      };
 
-      ws.onopen = function() {
-        console.log('Connected')
-      }
-
-      ws.onmessage = function(event) {
-        var out = document.getElementById('output');
-        console.log(`got ${event.data} `);
+      ws.onmessage = function (event) {
+        console.log(`got ${event.data}`);
         updateDict(event.data);
+        document.getElementById('server').innerHTML = '服务器响应: ' + event.data;
+        updateStats();
+      };
+
+      ws.onerror = function (event) {
+        console.log("Oops! ws error:", event);
+        console.log(`___________: ${counter}`);
+      };
+
+      ws.onclose = function (event) {
+        console.log("Closed:", event);
+        ws = null;
+      };
+    }
+
+    function startTest(tt, total) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        connectWebSocket();
       }
 
-      ws.onerror = function(event) {
-        console.log("Oops! ws error:", event.data);
-      }
-      ws.onclose = function(event) {
-        console.log("Closed:", event)
-        // setTimeout(connectWebSocket, 2000);
-        isClosed = true;
-      }
+      let counter = 1;
 
-      setInterval(function() {
-        if (isClosed != true) {
-          let fruit = randomChoice(fruits)
-          // 
-          // updateDict(fruit);
-          let message = document.getElementById('message');
-          let summary = document.getElementById('summary')
-          summary.innerHTML = Object.entries(dict)
-                              .map(([key, value]) => `${key}: ${value}`)
-                              .join('<br/> ');
-          message.innerHTML = 'Client send: '+ fruit;
-          console.log(`send ${fruit} to server`)
-
-          ws.send(fruit);
+      intervalId = setInterval(function () {
+        let fruit = "";
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          if (tt == "simple") {
+            fruit = randomChoice(fruits);
+            document.getElementById('client').innerHTML = '客户端请求: ' + fruit;
+            console.log(`send ${fruit} to server`);
+            ws.send(fruit);
+            updateStats();
+          } else {
+            if (counter <= total) {
+              fruit = counter.toString();
+              document.getElementById('client').innerHTML = '客户端请求: ' + fruit;
+              console.log(`send ${fruit} to server`);
+              console.log(`${counter}/${total}`);
+              ws.send(fruit);
+              counter++;
+              updateStats();
+            } else {
+              stopTest();
+            }
+          }
         }
       }, 1000);
     }
 
-    connectWebSocket();
+    function stopTest() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    }
+
+    function simpleTest() {
+      startTest("simple");
+    }
+
+    function counterTest() {
+      const input = document.getElementById('num')
+      const value = input.valueAsNumber;
+      startTest("counter", value);
+    }
+
+    function cleanup() {
+      document.getElementById('stats').innerHTML = "";
+      document.getElementById('client').innerHTML = "";
+      document.getElementById('server').innerHTML = "";
+    }
   </script>
 </body>
 

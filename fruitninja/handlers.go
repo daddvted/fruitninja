@@ -30,7 +30,8 @@ func (fruitninja *FruitNinja) getK8sFruitHandler(c echo.Context) error {
 	zap.S().Debugf("Request URL: %s\n", url)
 
 	if strings.TrimSpace(url) == "/" {
-		msg := strings.Repeat(fruitMap[fruitNinjaSettings.Name], fruitNinjaSettings.Count)
+		// msg := strings.Repeat(fruitMap[fruitNinjaSettings.Name], fruitNinjaSettings.Count)
+		msg := serveFruit(false, "")
 		return c.String(http.StatusOK, fmt.Sprintf("%s\n", msg))
 	}
 
@@ -40,7 +41,7 @@ func (fruitninja *FruitNinja) getK8sFruitHandler(c echo.Context) error {
 
 	skewer := []string{}
 	// Append itself to skewer
-	skewer = append(skewer, fruitMap[fruitNinjaSettings.Name])
+	skewer = append(skewer, serveFruit(false, ""))
 	ns := getNamespace()
 
 	var urlRemainder, serviceURL string
@@ -119,11 +120,11 @@ func (fruitninja *FruitNinja) getK8sBladeHandler(c echo.Context) error {
 	if ok {
 		return c.String(http.StatusOK, fruitEmoji)
 	} else {
-		return c.String(400, fmt.Sprintf("%s\n", fruitMap["blade"]))
+		return c.String(400, fmt.Sprintf("%s\n", serveFruit(false, "blade")))
 	}
 }
 
-func (fruitninja *FruitNinja) getDataHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) dataHandler(c echo.Context) error {
 	var jabberText string
 	var cacheText string
 	var dbText string
@@ -132,7 +133,7 @@ func (fruitninja *FruitNinja) getDataHandler(c echo.Context) error {
 	fmt.Println(c.Request().UserAgent())
 	ua := useragent.Parse(c.Request().UserAgent())
 
-	fruitName := produceFruit(fruitMap, true)
+	fruitName := serveFruit(true, "")
 
 	// Cache
 	if fruitNinjaCache == nil {
@@ -143,12 +144,12 @@ func (fruitninja *FruitNinja) getDataHandler(c echo.Context) error {
 			cacheText = data.CacheErrorText
 		} else {
 			fruitNinjaCache = redis
-			fruitNinjaCache.AppendKey("fruits", fruitName)
-			cacheText = fruitNinjaCache.GetKey("fruits")
+			fruitNinjaCache.AppendKey("fruitninja", fruitName)
+			cacheText = fruitNinjaCache.GetKey("fruitninja")
 		}
 	} else {
-		fruitNinjaCache.AppendKey("fruits", fruitName)
-		cacheText = fruitNinjaCache.GetKey("fruits")
+		fruitNinjaCache.AppendKey("fruitninja", fruitName)
+		cacheText = fruitNinjaCache.GetKey("fruitninja")
 	}
 	zap.S().Debug(fruitNinjaMysql)
 
@@ -204,12 +205,12 @@ func (fruitninja *FruitNinja) getDataHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) indexHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) helloHandler(c echo.Context) error {
 	ua_text := c.Request().Header.Get("User-Agent")
 	zap.S().Debugf("User-agent: %s\n", ua_text)
 	ua := useragent.Parse(ua_text)
 
-	fruit := produceFruit(fruitMap, false)
+	fruit := serveFruit(false, "")
 	serverIP := getOutboundIP()
 	hostname := getHostname()
 
@@ -224,7 +225,7 @@ func (fruitninja *FruitNinja) indexHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) helloHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) indexHandler(c echo.Context) error {
 	sleep := fruitninja.settings.Sleep
 	if sleep > 0 {
 		time.Sleep(time.Duration(sleep) * time.Second)
@@ -232,7 +233,7 @@ func (fruitninja *FruitNinja) helloHandler(c echo.Context) error {
 	ua_text := c.Request().Header.Get("User-Agent")
 	ua := useragent.Parse(ua_text)
 	hostname := getHostname()
-	fruit := produceFruit(fruitMap, false)
+	fruit := serveFruit(false, "")
 
 	if ua.IsUnknown() {
 		resp := fmt.Sprintf("%s@%s\n", fruit, hostname)
@@ -250,6 +251,7 @@ func (fruitninja *FruitNinja) wsHandler(c echo.Context) error {
 		msg := "Welcome to FruitNinja"
 		for {
 			// Write
+			zap.S().Infof("🛒 send %s to client", msg)
 			err := websocket.Message.Send(ws, msg)
 			if err != nil {
 				zap.S().Error(err)
@@ -259,12 +261,16 @@ func (fruitninja *FruitNinja) wsHandler(c echo.Context) error {
 			// Read
 			err = websocket.Message.Receive(ws, &msg)
 			if err != nil {
-				zap.S().Info("connection closed")
+				zap.S().Info("🐞 connection closed")
 				zap.S().Error(err)
 				break
 			}
-			zap.S().Infof("received %s from client", msg)
-			msg = fruitMap[msg]
+			zap.S().Infof("🐛 received %s from client", msg)
+			if isNumeric(msg) {
+				msg = serveFruit(false, "")
+			} else {
+				msg = serveFruit(false, msg)
+			}
 		}
 	}).ServeHTTP(c.Response(), c.Request())
 	return nil
