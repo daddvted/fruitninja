@@ -111,9 +111,17 @@ func serveFruit(isRandom bool, fruitName string) (fruit string) {
 	} else {
 		var fruitEmoji string
 		if fruitName == "" {
-			fruitEmoji = fruitMap[fruitNinjaSettings.Name]
+			if val, ok := fruitMap[fruitNinjaSettings.Name]; ok {
+				fruitEmoji = val
+			} else {
+				fruitEmoji = fruitMap["default"]
+			}
 		} else {
-			fruitEmoji = fruitMap[fruitName]
+			if val, ok := fruitMap[fruitName]; ok {
+				fruitEmoji = val
+			} else {
+				fruitEmoji = fruitMap["default"]
+			}
 		}
 		fruit = strings.Repeat(fruitEmoji, fruitNinjaSettings.Count)
 	}
