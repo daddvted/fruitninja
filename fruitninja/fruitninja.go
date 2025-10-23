@@ -17,7 +17,7 @@ type FruitNinjaSettings struct {
 	Listen        string `env:"NINJA_LISTEN" envDefault:":8080"`
 	Length        int    `env:"NINJA_JABBER_WORD" envDefault:"2"`
 	Sleep         int    `env:"NINJA_SLEEP" envDefault:"0"`
-	Name          string `env:"NINJA_NAME" envDefault:"default"`
+	Name          string `env:"NINJA_NAME" envDefault:"kiwi"`
 	Count         int    `env:"NINJA_COUNT" envDefault:"1"`
 	LogLevel      string `env:"NINJA_LOG_LEVEL" envDefault:"debug"`
 	K8SAPI        string `env:"NINJA_K8A_API" envDefault:"https://kubernetes.default.svc"`
