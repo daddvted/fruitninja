@@ -130,7 +130,8 @@
     }
 
     function counterTest() {
-      const input = document.getElementById('num')
+      cleanup();
+      const input = document.getElementById('num');
       const value = input.valueAsNumber;
       startTest("counter", value);
     }
