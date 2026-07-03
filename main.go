@@ -99,5 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 	zap.S().Infof("Fruitninja runs in %s mode.", settings.Mode)
-	fruit.Server.Logger.Fatal(fruit.Server.Start(settings.Listen))
+	if err := fruit.Server.Start(settings.Listen); err != nil {
+		zap.S().Fatalf("server stopped: %v", err)
+	}
 }

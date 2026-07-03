@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/daddvted/fruitninja/data"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/mileusna/useragent"
 	"golang.org/x/net/websocket"
 
@@ -24,7 +24,7 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
-func (fruitninja *FruitNinja) getK8sFruitHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) getK8sFruitHandler(c *echo.Context) error {
 	zap.S().Infof("Request for [%s] service\n", fruitNinjaSettings.Name)
 	url := c.Request().URL.Path
 	zap.S().Debugf("Request URL: %s\n", url)
@@ -96,7 +96,7 @@ func (fruitninja *FruitNinja) getK8sFruitHandler(c echo.Context) error {
 	return c.String(http.StatusOK, fmt.Sprintf("%s\n", bladeString))
 }
 
-func (fruitninja *FruitNinja) getK8sBladeHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) getK8sBladeHandler(c *echo.Context) error {
 	url := c.Request().URL.Path
 	zap.S().Debugf("Request URL: %s\n", url)
 	queryStr := c.Param("fruits")
@@ -124,7 +124,7 @@ func (fruitninja *FruitNinja) getK8sBladeHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) dataHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) dataHandler(c *echo.Context) error {
 	var jabberText string
 	var cacheText string
 	var dbText string
@@ -205,7 +205,7 @@ func (fruitninja *FruitNinja) dataHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) helloHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) helloHandler(c *echo.Context) error {
 	ua_text := c.Request().Header.Get("User-Agent")
 	zap.S().Debugf("User-agent: %s\n", ua_text)
 	ua := useragent.Parse(ua_text)
@@ -225,7 +225,7 @@ func (fruitninja *FruitNinja) helloHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) indexHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) indexHandler(c *echo.Context) error {
 	sleep := fruitninja.settings.Sleep
 	if sleep > 0 {
 		time.Sleep(time.Duration(sleep) * time.Second)
@@ -245,7 +245,7 @@ func (fruitninja *FruitNinja) indexHandler(c echo.Context) error {
 	}
 }
 
-func (fruitninja *FruitNinja) wsHandler(c echo.Context) error {
+func (fruitninja *FruitNinja) wsHandler(c *echo.Context) error {
 	websocket.Handler(func(ws *websocket.Conn) {
 		defer ws.Close()
 		msg := "Welcome to FruitNinja"

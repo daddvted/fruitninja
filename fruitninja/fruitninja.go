@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/daddvted/fruitninja/data"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"go.uber.org/zap"
 	"k8s.io/client-go/rest"
 )
@@ -76,7 +76,7 @@ func NewFruitninja(settings *FruitNinjaSettings, cache *data.Cache, db *data.DB,
 		LogLatency:   true,
 		LogUserAgent: true,
 		LogRequestID: true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+		LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
 			zap.L().Info("request",
 				zap.String("URI", v.URI),
 				zap.Int("status", v.Status),
