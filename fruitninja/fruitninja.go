@@ -1,6 +1,7 @@
 package fruitninja
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -68,6 +69,41 @@ func NewFruitninja(settings *FruitNinjaSettings, cache *data.Cache, db *data.DB,
 	}
 
 	e := echo.New()
+
+	defaultHTTPErrorHandler := e.HTTPErrorHandler
+
+	e.HTTPErrorHandler = func(c *echo.Context, err error) {
+		if resp, uErr := echo.UnwrapResponse(c.Response()); uErr == nil {
+			if resp.Committed {
+				return
+			}
+		}
+
+		code := http.StatusInternalServerError
+
+		var sc echo.HTTPStatusCoder
+		if errors.As(err, &sc) {
+			if tmp := sc.StatusCode(); tmp != 0 {
+				code = tmp
+			}
+		}
+
+		if code == http.StatusNotFound {
+			req := c.Request()
+
+			_ = c.JSON(http.StatusNotFound, map[string]any{
+				"code":       404,
+				"message":    "Not Found",
+				"method":     req.Method,
+				"path":       req.URL.Path,
+				"remote_ip":  c.RealIP(),
+				"user_agent": req.UserAgent(),
+			})
+			return
+		}
+
+		defaultHTTPErrorHandler(c, err)
+	}
 
 	// e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.IPExtractor = echo.ExtractIPFromRealIPHeader()
