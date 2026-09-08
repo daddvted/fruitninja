@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/caarlos0/env/v9"
 	"github.com/daddvted/fruitninja/data"
@@ -99,7 +104,48 @@ func main() {
 		os.Exit(1)
 	}
 	zap.S().Infof("Fruitninja runs in %s mode.", settings.Mode)
-	if err := fruit.Server.Start(settings.Listen); err != nil {
-		zap.S().Fatalf("server stopped: %v", err)
+
+	// create http.Server using Echo as handler so we can call Shutdown
+	srv := &http.Server{
+		Addr:    settings.Listen,
+		Handler: fruit.Server,
 	}
+
+	// start server in background
+	srvErr := make(chan error, 1)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			srvErr <- err
+		} else {
+			srvErr <- nil
+		}
+	}()
+
+	// listen for termination signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case sig := <-quit:
+		zap.S().Infof("🛑🛑🛑 received signal %v, shutting down", sig)
+	case err := <-srvErr:
+		if err != nil {
+			zap.S().Fatalf("server error: %v", err)
+		}
+		zap.S().Info("server stopped")
+	}
+
+	// give server time to shutdown gracefully
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(settings.GracefulShutdownTimeout)*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		zap.S().Errorf("error during server shutdown: %v", err)
+	}
+
+	// wait for active websockets to close (max 20s)
+	if err := fruit.WaitForWebsockets(time.Duration(settings.GracefulShutdownTimeout) * time.Second); err != nil {
+		zap.S().Warnf("websocket wait: %v", err)
+	}
+
+	zap.S().Info("shutdown complete")
 }

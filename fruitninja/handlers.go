@@ -247,6 +247,10 @@ func (fruitninja *FruitNinja) indexHandler(c *echo.Context) error {
 
 func (fruitninja *FruitNinja) wsHandler(c *echo.Context) error {
 	websocket.Handler(func(ws *websocket.Conn) {
+		// register websocket connection
+		fruitninja.wsWg.Add(1)
+		defer fruitninja.wsWg.Done()
+
 		defer ws.Close()
 		msg := "Welcome to FruitNinja"
 		for {

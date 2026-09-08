@@ -90,6 +90,8 @@ func serveFruit(isRandom bool, fruitName string) (fruit string) {
 		"tomato":     "🍅",
 		"watermelon": "🍉",
 		"blade":      "🔪",
+		"hotpepper":  "🌶️",
+		"avocado":    "🥑",
 		"default":    "🐞",
 	}
 	// var isRandom bool

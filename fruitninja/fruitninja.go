@@ -1,8 +1,11 @@
 package fruitninja
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/daddvted/fruitninja/data"
 	"github.com/labstack/echo/v5"
@@ -13,23 +16,24 @@ import (
 
 type FruitNinjaSettings struct {
 	// Context    string `env:"NINJA_CONTEXT" envDefault:""`
-	Mode          string `env:"NINJA_MODE" envDefault:"default"`
-	Listen        string `env:"NINJA_LISTEN" envDefault:":8080"`
-	Length        int    `env:"NINJA_JABBER_WORD" envDefault:"2"`
-	Sleep         int    `env:"NINJA_SLEEP" envDefault:"0"`
-	Name          string `env:"NINJA_NAME" envDefault:"kiwi"`
-	Count         int    `env:"NINJA_COUNT" envDefault:"1"`
-	LogLevel      string `env:"NINJA_LOG_LEVEL" envDefault:"debug"`
-	K8SAPI        string `env:"NINJA_K8A_API" envDefault:"https://kubernetes.default.svc"`
-	Development   bool   `env:"NINJA_DEV" envDefault:"true"`
-	K8SToken      string `env:"NINJA_K8S_TOKEN" envDefault:"eyJhbGciOiJSUzI1NiIsImtpZCI6InRBb1JyNzRaa3VYZmV6cmk4bHZybGJZcjVpOGN4cDhCSEtCdEJQMnp1RWMifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZXYiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoiZGV2LWNvbnRhaW5lci1zZWNyZXQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGV2LWNvbnRhaW5lci1zYSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjExMWY0OGRmLTFkYWEtNDljOS1hMzIzLTI0Nzc3ZWE0Y2U0ZCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZXY6ZGV2LWNvbnRhaW5lci1zYSJ9.o0ZKu_ziOO3-GJ_kzYDnNq3UslhjRkue0TJWFAC9wgAgndhQi37r6-HwtMx3syHnC8Q5sNdG_Df0vYAKSH5PjgA2RqbMIoOWUwRxEDIwNBHHZ9xJrOu4gCZoxWqHgBskmjsqE5zVw5D6ksltAEZKFke15t2NlYuiiaz1Mj9mcEdUk7ryo5Z18VGKe6lsdbqfu_6GkUvN5NvzvoZcSrnc6VTGxuBV_c1Mfhk0lJpIlzEZjjDCpi6w-V3aH1oIJE5xmBxSOo9i8GRCV1SmEMsOErF9Qsc2QRwIiuIe4R4ALS-xSxqbrDBEAnI95feZDlsJU8yrqMsm0zxpkpHWSHQ13Q"`
-	RedisAddr     string `env:"NINJA_REDIS_ADDR" envDefault:"localhost:6379"`
-	RedisPassword string `env:"NINJA_REDIS_PSD" envDefault:""`
-	RedisDB       int    `env:"NINJA_REDIS_DB" envDefault:"0"`
-	MySQLHost     string `env:"NINJA_MYSQL_HOST" envDefault:"localhost:3306"`
-	MySQLUsername string `env:"NINJA_MYSQL_USERNAME" envDefault:"root"`
-	MySQLPassword string `env:"NINJA_MYSQL_PASSWORD" envDefault:"root"`
-	MySQLDB       string `env:"NINJA_MYSQL_DB" envDefault:"fruit"`
+	Mode                    string `env:"NINJA_MODE" envDefault:"default"`
+	Listen                  string `env:"NINJA_LISTEN" envDefault:":8080"`
+	Length                  int    `env:"NINJA_JABBER_WORD" envDefault:"2"`
+	Sleep                   int    `env:"NINJA_SLEEP" envDefault:"0"`
+	Name                    string `env:"NINJA_NAME" envDefault:"kiwi"`
+	Count                   int    `env:"NINJA_COUNT" envDefault:"1"`
+	LogLevel                string `env:"NINJA_LOG_LEVEL" envDefault:"debug"`
+	K8SAPI                  string `env:"NINJA_K8A_API" envDefault:"https://kubernetes.default.svc"`
+	Development             bool   `env:"NINJA_DEV" envDefault:"true"`
+	K8SToken                string `env:"NINJA_K8S_TOKEN" envDefault:"eyJhbGciOiJSUzI1NiIsImtpZCI6InRBb1JyNzRaa3VYZmV6cmk4bHZybGJZcjVpOGN4cDhCSEtCdEJQMnp1RWMifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZXYiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoiZGV2LWNvbnRhaW5lci1zZWNyZXQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGV2LWNvbnRhaW5lci1zYSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjExMWY0OGRmLTFkYWEtNDljOS1hMzIzLTI0Nzc3ZWE0Y2U0ZCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZXY6ZGV2LWNvbnRhaW5lci1zYSJ9.o0ZKu_ziOO3-GJ_kzYDnNq3UslhjRkue0TJWFAC9wgAgndhQi37r6-HwtMx3syHnC8Q5sNdG_Df0vYAKSH5PjgA2RqbMIoOWUwRxEDIwNBHHZ9xJrOu4gCZoxWqHgBskmjsqE5zVw5D6ksltAEZKFke15t2NlYuiiaz1Mj9mcEdUk7ryo5Z18VGKe6lsdbqfu_6GkUvN5NvzvoZcSrnc6VTGxuBV_c1Mfhk0lJpIlzEZjjDCpi6w-V3aH1oIJE5xmBxSOo9i8GRCV1SmEMsOErF9Qsc2QRwIiuIe4R4ALS-xSxqbrDBEAnI95feZDlsJU8yrqMsm0zxpkpHWSHQ13Q"`
+	RedisAddr               string `env:"NINJA_REDIS_ADDR" envDefault:"localhost:6379"`
+	RedisPassword           string `env:"NINJA_REDIS_PSD" envDefault:""`
+	RedisDB                 int    `env:"NINJA_REDIS_DB" envDefault:"0"`
+	MySQLHost               string `env:"NINJA_MYSQL_HOST" envDefault:"localhost:3306"`
+	MySQLUsername           string `env:"NINJA_MYSQL_USERNAME" envDefault:"root"`
+	MySQLPassword           string `env:"NINJA_MYSQL_PASSWORD" envDefault:"root"`
+	MySQLDB                 string `env:"NINJA_MYSQL_DB" envDefault:"fruit"`
+	GracefulShutdownTimeout int    `env:"NINJA_GRACEFUL_SHUTDOWN_TIMEOUT" envDefault:"30"`
 }
 
 var (
@@ -46,6 +50,7 @@ type FruitNinja struct {
 	k8s      *kubernetesMinion
 	cache    *data.Cache
 	db       *data.DB
+	wsWg     sync.WaitGroup
 }
 
 func NewFruitninja(settings *FruitNinjaSettings, cache *data.Cache, db *data.DB, static fs.FS) (*FruitNinja, error) {
@@ -103,4 +108,22 @@ func NewFruitninja(settings *FruitNinjaSettings, cache *data.Cache, db *data.DB,
 	}
 	fruitninja.Server = e
 	return fruitninja, nil
+}
+
+// WaitForWebsockets waits until all tracked websocket connections are closed or timeout occurs.
+func (f *FruitNinja) WaitForWebsockets(timeout time.Duration) error {
+	done := make(chan struct{})
+	go func() {
+		f.wsWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		zap.S().Info("all websocket connections closed")
+		return nil
+	case <-time.After(timeout):
+		zap.S().Warn("timeout waiting for websocket connections to close")
+		return fmt.Errorf("timeout waiting for websocket connections")
+	}
 }
